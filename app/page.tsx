@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 async function getHealth() {
   const port = process.env.PORT ?? 3000;
-  const res = await fetch(`http://localhost:${port}/api/v1/health`, {
+  const res = await fetch(`http://127.0.0.1:${port}/api/v1/health`, {
     cache: "no-store",
   });
   return res.json();
