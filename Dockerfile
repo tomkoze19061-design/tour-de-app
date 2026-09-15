@@ -1,5 +1,7 @@
 # --- Závislosti ---
-FROM node:20-alpine AS deps
+# better-sqlite3 vyžaduje Node.js 22+, proto stejnou verzi
+# používáme ve všech fázích buildu i za běhu.
+FROM node:22-alpine AS deps
 WORKDIR /app
 # better-sqlite3 je nativní modul -- potřebuje se při instalaci
 # zkompilovat, na což Alpine potřebuje tyto nástroje.
@@ -8,14 +10,14 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # --- Build ---
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
 # --- Běh aplikace ---
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
