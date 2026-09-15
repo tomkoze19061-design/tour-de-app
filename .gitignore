@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# sqlite databáze (generuje se za běhu)
+*.db
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -2,6 +2,8 @@
 // se musí generovat vždy znovu při každém požadavku (ne jednou
 // dopředu při "npm run build"). Proto "force-dynamic" -- jinak
 // by build appky selhal, protože při buildu server ještě neběží.
+import { getTeamInfo } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
 
 async function getHealth() {
@@ -14,11 +16,17 @@ async function getHealth() {
 
 export default async function Home() {
   const data = await getHealth();
+  const { teamName, members } = getTeamInfo();
 
   return (
     <div>
       <h1>Think different Academy</h1>
       <p>Status: {data.status.toUpperCase()}</p>
+
+      <footer>
+        <p>{teamName}</p>
+        <p>{members.join(", ")}</p>
+      </footer>
     </div>
   );
 }

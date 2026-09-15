@@ -1,6 +1,9 @@
 # --- Závislosti ---
 FROM node:20-alpine AS deps
 WORKDIR /app
+# better-sqlite3 je nativní modul -- potřebuje se při instalaci
+# zkompilovat, na což Alpine potřebuje tyto nástroje.
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 RUN npm ci
 
