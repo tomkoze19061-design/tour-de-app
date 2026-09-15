@@ -23,4 +23,9 @@ COPY --from=builder /app/.next/static ./.next/static
 EXPOSE 3000
 ENV PORT=3000
 
-CMD ["node", "server.js"]
+# Next.js standalone server čte HOSTNAME z prostředí a poslouchá
+# jen na té adrese. Kubernetes/Docker runtime ale HOSTNAME sám
+# nastavuje na název kontejneru/podu, což by server svázalo jen
+# s tímto interním jménem (nedostupné přes 127.0.0.1/0.0.0.0).
+# Proto ho tady natvrdo přebijeme těsně před spuštěním.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
