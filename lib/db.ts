@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import path from "node:path";
 
 const dbPath = path.join(process.cwd(), "app.db");
-const db = new Database(dbPath);
+export const db = new Database(dbPath);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS team (
@@ -12,6 +12,19 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS members (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS stops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL CHECK (length(name) <= 255),
+    image_url TEXT CHECK (image_url IS NULL OR length(image_url) <= 255),
+    is_transfer INTEGER NOT NULL DEFAULT 0,
+    x REAL NOT NULL,
+    y REAL NOT NULL,
+    wheelchair_accessible INTEGER NOT NULL DEFAULT 0,
+    has_shelter INTEGER NOT NULL DEFAULT 0,
+    has_bench INTEGER NOT NULL DEFAULT 0,
+    has_ticket_machine INTEGER NOT NULL DEFAULT 0,
+    has_display INTEGER NOT NULL DEFAULT 0
   );
 `);
 
