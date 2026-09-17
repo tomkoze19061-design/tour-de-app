@@ -7,6 +7,7 @@ import {
   validateStopInput,
   parseStopId,
 } from "@/lib/stops";
+import { isAuthorized } from "@/lib/auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,13 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Missing or invalid administrator API key" },
+      { status: 401 }
+    );
+  }
+
   const { id: idParam } = await params;
   const id = parseStopId(idParam);
 
@@ -57,7 +65,14 @@ export async function PUT(request: Request, { params }: Params) {
   return NextResponse.json(toApiStop(stop));
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Missing or invalid administrator API key" },
+      { status: 401 }
+    );
+  }
+
   const { id: idParam } = await params;
   const id = parseStopId(idParam);
 

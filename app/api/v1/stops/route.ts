@@ -5,6 +5,7 @@ import {
   toApiStop,
   validateStopInput,
 } from "@/lib/stops";
+import { isAuthorized } from "@/lib/auth";
 
 export async function GET() {
   const stops = getAllStops();
@@ -12,6 +13,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Autorizaci ověřujeme jako úplně první krok -- neautorizovaný
+  // požadavek nesmí nijak ovlivnit stav databáze, i kdyby byla
+  // data jinak platná.
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Missing or invalid administrator API key" },
+      { status: 401 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
