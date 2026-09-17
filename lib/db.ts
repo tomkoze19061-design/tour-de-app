@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import path from "node:path";
+import { seedStops } from "@/lib/seedStops";
 
 const dbPath = path.join(process.cwd(), "app.db");
 export const db = new Database(dbPath);
@@ -42,6 +43,8 @@ if (teamCount === 0) {
     insertMember.run(name);
   }
 }
+
+seedStops(db);
 
 export function getTeamInfo() {
   const team = db.prepare("SELECT name FROM team LIMIT 1").get() as
