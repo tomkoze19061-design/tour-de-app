@@ -143,3 +143,79 @@ export function deleteStop(id: number): boolean {
   const result = db.prepare("DELETE FROM stops WHERE id = ?").run(id);
   return result.changes > 0;
 }
+
+// --- Validace vstupu (task "Když všechno nejde podle plánu") ---
+
+const ALLOWED_STOP_INPUT_KEYS = new Set([
+  "name",
+  "image_url",
+  "wheelchair_accessible",
+  "has_shelter",
+  "has_ticket_machine",
+]);
+
+function isValidUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Vrátí ověřený StopInput, nebo null pokud vstup neodpovídá
+// specifikaci (chybějící/špatný typ pole, neznámé pole navíc,
+// včetně "id" -- to smí přidělit jen server).
+export function validateStopInput(body: unknown): StopInput | null {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return null;
+  }
+
+  const record = body as Record<string, unknown>;
+
+  for (const key of Object.keys(record)) {
+    if (!ALLOWED_STOP_INPUT_KEYS.has(key)) return null;
+  }
+
+  const { name, image_url, wheelchair_accessible, has_shelter, has_ticket_machine } =
+    record;
+
+  if (typeof name !== "string" || name.length < 1 || name.length > 255) {
+    return null;
+  }
+
+  if (image_url !== undefined && image_url !== null) {
+    if (
+      typeof image_url !== "string" ||
+      image_url.length > 255 ||
+      !isValidUrl(image_url)
+    ) {
+      return null;
+    }
+  }
+
+  if (
+    typeof wheelchair_accessible !== "boolean" ||
+    typeof has_shelter !== "boolean" ||
+    typeof has_ticket_machine !== "boolean"
+  ) {
+    return null;
+  }
+
+  return {
+    name,
+    image_url: (image_url as string | null | undefined) ?? null,
+    wheelchair_accessible,
+    has_shelter,
+    has_ticket_machine,
+  };
+}
+
+// Vrátí platné celé číslo >= 1, nebo null (0, záporná čísla,
+// desetinná čísla a jiné než číselné hodnoty jsou neplatné).
+export function parseStopId(idParam: string): number | null {
+  if (!/^[0-9]+$/.test(idParam)) return null;
+  const id = Number(idParam);
+  if (!Number.isInteger(id) || id < 1) return null;
+  return id;
+}
