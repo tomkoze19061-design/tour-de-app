@@ -1,0 +1,46 @@
+{
+  "lines": [
+    {
+      "number": "A",
+      "name": "Green Line",
+      "type": "metro",
+      "color": "#02B74D",
+      "stops": [
+        "Turing Terminal",
+        "Ada Exchange",
+        "Pixel Park",
+        "Byte Square",
+        "Stack Garden"
+      ]
+    },
+    {
+      "number": "B",
+      "name": "Yellow Line",
+      "type": "metro",
+      "color": "#FDC501",
+      "stops": [
+        "Hopper Hall",
+        "Ada Exchange",
+        "Compiler Court",
+        "Kernel Hub",
+        "Syntax Square",
+        "Lambda Lane",
+        "Campus Gate"
+      ]
+    },
+    {
+      "number": "C",
+      "name": "Red Line",
+      "type": "metro",
+      "color": "#EA1B24",
+      "stops": [
+        "Edison East",
+        "Notebook Quay",
+        "Kernel Hub",
+        "Library Loop",
+        "Byte Square",
+        "Quantum Commons"
+      ]
+    }
+  ]
+}

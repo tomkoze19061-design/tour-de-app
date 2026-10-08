@@ -1,9 +1,14 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import { seedStops } from "@/lib/seedStops";
+import { seedNetwork } from "@/lib/seedNetwork";
 
 const dbPath = path.join(process.cwd(), "app.db");
 export const db = new Database(dbPath);
+
+// SQLite ve výchozím stavu cizí klíče nevynucuje -- zapneme je,
+// aby šlo mít v databázi skutečné vazby mezi tabulkami.
+db.pragma("foreign_keys = ON");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS team (
@@ -27,6 +32,25 @@ db.exec(`
     has_ticket_machine INTEGER NOT NULL DEFAULT 0,
     has_display INTEGER NOT NULL DEFAULT 0
   );
+  CREATE TABLE IF NOT EXISTS lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    number TEXT NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    color TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    line_id INTEGER NOT NULL REFERENCES lines(id) ON DELETE CASCADE,
+    direction TEXT NOT NULL CHECK (direction IN ('outbound', 'inbound'))
+  );
+  CREATE TABLE IF NOT EXISTS route_stops (
+    route_id INTEGER NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+    stop_id INTEGER NOT NULL REFERENCES stops(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position >= 1),
+    PRIMARY KEY (route_id, position),
+    UNIQUE (route_id, stop_id)
+  );
 `);
 
 // Databázi naplníme daty jen jednou -- při prvním spuštění,
@@ -45,6 +69,7 @@ if (teamCount === 0) {
 }
 
 seedStops(db);
+seedNetwork(db);
 
 export function getTeamInfo() {
   const team = db.prepare("SELECT name FROM team LIMIT 1").get() as
