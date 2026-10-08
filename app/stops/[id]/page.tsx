@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import type { ApiStop } from "@/lib/stops";
+import type { Line } from "@/lib/lines";
+import LineLinks from "@/components/LineLinks";
 
 type State =
   | { status: "loading" }
@@ -13,6 +15,26 @@ type State =
 export default function StopDetailPage() {
   const params = useParams<{ id: string }>();
   const [state, setState] = useState<State>({ status: "loading" });
+  // Linky na zastávce jsou doplňková informace -- když se nenačtou,
+  // detail zastávky se zobrazí i tak.
+  const [lines, setLines] = useState<Line[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/v1/stops/${params.id}/lines`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Line[]) => {
+        if (!cancelled) setLines(data);
+      })
+      .catch(() => {
+        if (!cancelled) setLines([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +145,23 @@ export default function StopDetailPage() {
           </li>
         ))}
       </ul>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-brand-blue-dark">
+          Linky na zastávce
+        </h2>
+        {lines === null ? (
+          <p className="mt-2 text-sm text-brand-black/60">Načítám linky…</p>
+        ) : lines.length === 0 ? (
+          <p className="mt-2 text-sm text-brand-black/60">
+            Tuto zastávku momentálně neobsluhuje žádná linka.
+          </p>
+        ) : (
+          <div className="mt-3">
+            <LineLinks lines={lines} size="md" />
+          </div>
+        )}
+      </section>
     </div>
   );
 }
