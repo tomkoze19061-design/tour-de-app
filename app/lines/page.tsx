@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Line, LineDetail } from "@/lib/lines";
 import LineBadge from "@/components/LineBadge";
 import { lineTypeLabel } from "@/lib/lineDisplay";
@@ -94,16 +95,17 @@ export default function LinesPage() {
       {state.status === "ok" && state.lines.length > 0 && (
         <ul className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           {state.lines.map((line) => (
-            <li
-              key={line.id}
-              className="flex gap-4 overflow-hidden rounded-xl border border-brand-blue/15 p-4"
-              style={{ borderLeft: `6px solid ${line.color}` }}
-            >
+            <li key={line.id}>
+              <Link
+                href={`/lines/${line.id}`}
+                className="group flex h-full gap-4 overflow-hidden rounded-xl border border-brand-blue/15 p-4 transition hover:border-brand-blue/40 hover:shadow-md"
+                style={{ borderLeft: `6px solid ${line.color}` }}
+              >
               <LineBadge number={line.number} color={line.color} />
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h2 className="text-lg font-semibold text-brand-black">
+                  <h2 className="text-lg font-semibold text-brand-black group-hover:text-brand-blue">
                     {line.name}
                   </h2>
                   <span className="rounded-full bg-brand-blue/10 px-3 py-0.5 text-xs font-medium text-brand-blue-dark">
@@ -129,6 +131,7 @@ export default function LinesPage() {
                   </p>
                 )}
               </div>
+              </Link>
             </li>
           ))}
         </ul>
