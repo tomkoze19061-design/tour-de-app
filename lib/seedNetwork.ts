@@ -15,27 +15,13 @@ type NetworkLine = {
 // Volá se při každém startu appky -- pokud už linky v databázi jsou,
 // nic se nemění. Každá linka dostane dvě trasy: outbound (z výchozí
 // zastávky) a inbound (stejné zastávky v opačném pořadí).
+// Kontrola i vkládání běží v jedné IMMEDIATE transakci (viz seedStops.ts),
+// aby paralelní procesy nevložily síť dvakrát.
 export function seedNetwork(db: Database.Database) {
-  const linesCount = (
-    db.prepare("SELECT COUNT(*) as count FROM lines").get() as {
-      count: number;
-    }
-  ).count;
-
-  if (linesCount > 0) return;
-
   const filePath = path.join(process.cwd(), "public", "data", "network.json");
   const { lines } = JSON.parse(fs.readFileSync(filePath, "utf-8")) as {
     lines: NetworkLine[];
   };
-
-  const stopRows = db.prepare("SELECT id, name FROM stops").all() as {
-    id: number;
-    name: string;
-  }[];
-  const stopIdByName = new Map(
-    stopRows.map((s) => [s.name.trim().toLowerCase(), s.id])
-  );
 
   const insertLine = db.prepare(
     "INSERT INTO lines (number, name, type, color) VALUES (?, ?, ?, ?)"
@@ -48,6 +34,22 @@ export function seedNetwork(db: Database.Database) {
   );
 
   const seed = db.transaction(() => {
+    const linesCount = (
+      db.prepare("SELECT COUNT(*) as count FROM lines").get() as {
+        count: number;
+      }
+    ).count;
+
+    if (linesCount > 0) return;
+
+    const stopRows = db.prepare("SELECT id, name FROM stops").all() as {
+      id: number;
+      name: string;
+    }[];
+    const stopIdByName = new Map(
+      stopRows.map((s) => [s.name.trim().toLowerCase(), s.id])
+    );
+
     for (const line of lines) {
       const stopIds = line.stops.map((name) => {
         const id = stopIdByName.get(name.trim().toLowerCase());
@@ -80,5 +82,5 @@ export function seedNetwork(db: Database.Database) {
     }
   });
 
-  seed();
+  seed.immediate();
 }

@@ -6,6 +6,11 @@ import { seedNetwork } from "@/lib/seedNetwork";
 const dbPath = path.join(process.cwd(), "app.db");
 export const db = new Database(dbPath);
 
+// Když databázi používá víc procesů naráz (paralelní workery při
+// `next build`), počkáme až 10 s na uvolnění zámku, místo abychom
+// hned spadli s chybou "database is locked".
+db.pragma("busy_timeout = 10000");
+
 // SQLite ve výchozím stavu cizí klíče nevynucuje -- zapneme je,
 // aby šlo mít v databázi skutečné vazby mezi tabulkami.
 db.pragma("foreign_keys = ON");
@@ -54,19 +59,26 @@ db.exec(`
 `);
 
 // Databázi naplníme daty jen jednou -- při prvním spuštění,
-// kdy jsou tabulky ještě prázdné.
-const teamCount = (
-  db.prepare("SELECT COUNT(*) as count FROM team").get() as { count: number }
-).count;
+// kdy jsou tabulky ještě prázdné. Kontrola i vložení běží v jedné
+// IMMEDIATE transakci, aby paralelní procesy nevložily tým dvakrát.
+const seedTeam = db.transaction(() => {
+  const teamCount = (
+    db.prepare("SELECT COUNT(*) as count FROM team").get() as {
+      count: number;
+    }
+  ).count;
 
-if (teamCount === 0) {
+  if (teamCount > 0) return;
+
   db.prepare("INSERT INTO team (name) VALUES (?)").run("OBLÁČKOVÝ_MEDVÝDCY");
 
   const insertMember = db.prepare("INSERT INTO members (name) VALUES (?)");
   for (const name of ["Tomáš Koželuh", "Jakub Vejšický", "Jan Junek"]) {
     insertMember.run(name);
   }
-}
+});
+
+seedTeam.immediate();
 
 seedStops(db);
 seedNetwork(db);

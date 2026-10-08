@@ -33,15 +33,13 @@ const toBool = (value: string) => (value === "true" ? 1 : 0);
 // Naplní tabulku stops daty ze zdrojového souboru public/data/stops.csv.
 // Volá se při každém startu appky (viz db.ts) -- pokud tabulka
 // už data obsahuje, nic se nemění.
+//
+// Kontrola "je tabulka prázdná?" i samotné vkládání běží v jedné
+// IMMEDIATE transakci. Ta hned na začátku zamkne databázi pro zápis,
+// takže když databázi načte víc procesů naráz (např. paralelní
+// workery při `next build`), seed proběhne jen v jednom z nich
+// a ostatní pak uvidí, že data už tam jsou.
 export function seedStops(db: Database.Database) {
-  const stopsCount = (
-    db.prepare("SELECT COUNT(*) as count FROM stops").get() as {
-      count: number;
-    }
-  ).count;
-
-  if (stopsCount > 0) return;
-
   const csvPath = path.join(process.cwd(), "public", "data", "stops.csv");
   const csvContent = fs.readFileSync(csvPath, "utf-8");
   const rows = parseCsv(csvContent);
@@ -56,7 +54,15 @@ export function seedStops(db: Database.Database) {
       @has_ticket_machine, @has_display)
   `);
 
-  const insertMany = db.transaction((rows: Record<string, string>[]) => {
+  const seed = db.transaction((rows: Record<string, string>[]) => {
+    const stopsCount = (
+      db.prepare("SELECT COUNT(*) as count FROM stops").get() as {
+        count: number;
+      }
+    ).count;
+
+    if (stopsCount > 0) return;
+
     for (const row of rows) {
       insert.run({
         id: Number(row.id),
@@ -74,5 +80,5 @@ export function seedStops(db: Database.Database) {
     }
   });
 
-  insertMany(rows);
+  seed.immediate(rows);
 }
