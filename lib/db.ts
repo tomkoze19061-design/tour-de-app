@@ -1,7 +1,9 @@
 import Database from "better-sqlite3";
 import path from "node:path";
+import { runMigrations } from "@/lib/migrations";
 import { seedStops } from "@/lib/seedStops";
 import { seedNetwork } from "@/lib/seedNetwork";
+import { seedTimetables } from "@/lib/seedTimetables";
 
 const dbPath = path.join(process.cwd(), "app.db");
 export const db = new Database(dbPath);
@@ -49,14 +51,11 @@ db.exec(`
     line_id INTEGER NOT NULL REFERENCES lines(id) ON DELETE CASCADE,
     direction TEXT NOT NULL CHECK (direction IN ('outbound', 'inbound'))
   );
-  CREATE TABLE IF NOT EXISTS route_stops (
-    route_id INTEGER NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
-    stop_id INTEGER NOT NULL REFERENCES stops(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL CHECK (position >= 1),
-    PRIMARY KEY (route_id, position),
-    UNIQUE (route_id, stop_id)
-  );
 `);
+
+// Zastávky na trasách (route_stops), spoje a jízdní řády vytvářejí
+// číslované migrace -- viz lib/migrations.ts.
+runMigrations(db);
 
 // Databázi naplníme daty jen jednou -- při prvním spuštění,
 // kdy jsou tabulky ještě prázdné. Kontrola i vložení běží v jedné
@@ -82,6 +81,7 @@ seedTeam.immediate();
 
 seedStops(db);
 seedNetwork(db);
+seedTimetables(db);
 
 export function getTeamInfo() {
   const team = db.prepare("SELECT name FROM team LIMIT 1").get() as

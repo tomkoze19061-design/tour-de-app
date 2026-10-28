@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Line, LineDetail } from "@/lib/lines";
+import type { TripSummary } from "@/lib/timetables";
 import LineBadge from "@/components/LineBadge";
+import LineTrips from "@/components/LineTrips";
 import { lineTypeLabel, readableTextColor } from "@/lib/lineDisplay";
 
 type State =
@@ -20,6 +22,30 @@ export default function LineDetailPage() {
   const [activeTripId, setActiveTripId] = useState<number | null>(null);
   // Pro každou zastávku: ostatní linky, na které se tam dá přestoupit.
   const [transfers, setTransfers] = useState<Record<number, Line[]>>({});
+  // Spoje linky (všechny směry) -- null = načítá se, "error" = API selhalo.
+  const [lineTrips, setLineTrips] = useState<TripSummary[] | null | "error">(
+    null
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/v1/lines/${params.id}/trips`)
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data: TripSummary[]) => {
+        if (!cancelled) setLineTrips(data);
+      })
+      .catch(() => {
+        if (!cancelled) setLineTrips("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +263,13 @@ export default function LineDetailPage() {
               );
             })}
           </ol>
+
+          <LineTrips
+            trips={lineTrips}
+            direction={activeTrip.direction_type}
+            directionLabel={activeTrip.direction}
+            lineColor={line.color}
+          />
         </>
       )}
     </div>
