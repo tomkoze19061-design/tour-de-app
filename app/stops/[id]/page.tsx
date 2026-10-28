@@ -6,6 +6,7 @@ import Image from "next/image";
 import type { ApiStop } from "@/lib/stops";
 import type { Line } from "@/lib/lines";
 import LineLinks from "@/components/LineLinks";
+import StopDepartures from "@/components/StopDepartures";
 
 type State =
   | { status: "loading" }
@@ -162,6 +163,8 @@ export default function StopDetailPage() {
           </div>
         )}
       </section>
+
+      <StopDepartures stopId={params.id} />
     </div>
   );
 }
