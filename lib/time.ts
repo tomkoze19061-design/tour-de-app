@@ -17,6 +17,22 @@ export function parseSourceTime(value: string): number | null {
   return hours * 60 + Number(match[2]);
 }
 
+// Ověří parametr service_date (den provozu ve formátu YYYY-MM-DD).
+// Vrátí true, pokud parametr chybí nebo je to skutečné datum;
+// false pro nesmysly jako "2026-13-45" nebo "abc".
+export function isValidServiceDate(value: string | null): boolean {
+  if (value === null) return true;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day] = match.slice(1).map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 // Minuty provozního dne -> čas ve formátu HH:MM a počet dní navíc
 // (podle API kontraktu: odjezd v 0:14 po výjezdu ve 23:52 má
 // day_offset 1).

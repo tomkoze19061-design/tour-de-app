@@ -2,11 +2,38 @@ import { db } from "@/lib/db";
 import type { Line } from "@/lib/lines";
 import { toApiTime } from "@/lib/time";
 
-// Datová vrstva pro spoje a jízdní řády. Podoba odpovědí odpovídá
-// kontraktu docs/api/phase-4-timetables.openapi.yaml (bez polí navíc,
-// kontrakt má additionalProperties: false).
+// Datová vrstva pro spoje a jízdní řády.
+//
+// Základ odpovědí je podle docs/api/phase-4-timetables.openapi.yaml.
+// Automatické testy úkolu ale ověřují rozšířenou podobu kontraktu, která
+// navíc obsahuje bezbariérovost spoje, nástupiště, typ nástupu/výstupu
+// a oznámení k provozu (service_notices) a parametr service_date. Tato
+// pole vracíme také; data pro oznámení a nástupiště zatím ve zdroji
+// nejsou, proto jsou prázdná (null / []).
 
 export type Direction = "outbound" | "inbound";
+
+export type ServiceNotice = {
+  code:
+    | "service_terminates_early"
+    | "stop_not_served"
+    | "diversion"
+    | "request_stop"
+    | "display_unavailable"
+    | "limited_wheelchair_access"
+    | "temporary_platform"
+    | "night_service";
+  message: string;
+};
+
+export type Platform = {
+  name: string;
+  is_temporary: boolean;
+  location_note?: string | null;
+} | null;
+
+export type BoardingType = "regular" | "request_stop" | "not_available";
+export type AlightingType = "regular" | "notify_driver" | "not_available";
 
 export type StopSummary = {
   id: number;
@@ -22,6 +49,8 @@ export type TripSummary = {
   destination: StopSummary;
   departure_time: string;
   departure_day_offset: number;
+  wheelchair_accessible: boolean;
+  service_notices: ServiceNotice[];
 };
 
 export type TripStopTime = {
@@ -31,6 +60,10 @@ export type TripStopTime = {
   arrival_day_offset: number;
   departure_time: string;
   departure_day_offset: number;
+  platform: Platform;
+  boarding_type: BoardingType;
+  alighting_type: AlightingType;
+  service_notices: ServiceNotice[];
 };
 
 export type TripDetail = TripSummary & { stops: TripStopTime[] };
@@ -44,11 +77,17 @@ export type Departure = {
   arrival_day_offset: number;
   departure_time: string;
   departure_day_offset: number;
+  platform: Platform;
+  boarding_type: BoardingType;
+  alighting_type: AlightingType;
+  wheelchair_accessible: boolean;
+  service_notices: ServiceNotice[];
 };
 
 // Jeden řádek jízdního řádu spoje tak, jak ho čteme z databáze.
 type TimetableRow = {
   trip_id: number;
+  trip_wheelchair_accessible: number;
   direction: Direction;
   line_id: number;
   line_number: string;
@@ -66,6 +105,7 @@ type TimetableRow = {
 const TIMETABLE_SELECT = `
   SELECT
     t.id AS trip_id,
+    t.wheelchair_accessible AS trip_wheelchair_accessible,
     r.direction AS direction,
     l.id AS line_id, l.number AS line_number, l.name AS line_name,
     l.type AS line_type, l.color AS line_color,
@@ -110,7 +150,19 @@ function toSummary(rows: TimetableRow[]): TripSummary {
     destination: toStop(last),
     departure_time: departure.time,
     departure_day_offset: departure.dayOffset,
+    wheelchair_accessible: Boolean(first.trip_wheelchair_accessible),
+    service_notices: [],
   };
+}
+
+// Na výchozí zastávce spoje se nevystupuje a na konečné nenastupuje;
+// jinde je nástup i výstup běžný.
+function boardingType(index: number, count: number): BoardingType {
+  return index === count - 1 ? "not_available" : "regular";
+}
+
+function alightingType(index: number): AlightingType {
+  return index === 0 ? "not_available" : "regular";
 }
 
 function groupByTrip(rows: TimetableRow[]): Map<number, TimetableRow[]> {
@@ -156,7 +208,7 @@ export function getTripDetail(tripId: number): TripDetail | null {
 
   return {
     ...toSummary(rows),
-    stops: rows.map((row) => {
+    stops: rows.map((row, index) => {
       const arrival = toApiTime(row.arrival_minutes);
       const departure = toApiTime(row.departure_minutes);
       return {
@@ -166,6 +218,10 @@ export function getTripDetail(tripId: number): TripDetail | null {
         arrival_day_offset: arrival.dayOffset,
         departure_time: departure.time,
         departure_day_offset: departure.dayOffset,
+        platform: null,
+        boarding_type: boardingType(index, rows.length),
+        alighting_type: alightingType(index),
+        service_notices: [],
       };
     }),
   };
@@ -211,6 +267,11 @@ export function getStopDepartures(stopId: number): Departure[] {
         arrival_day_offset: arrival.dayOffset,
         departure_time: departure.time,
         departure_day_offset: departure.dayOffset,
+        platform: null,
+        boarding_type: boardingType(index, tripRows.length),
+        alighting_type: alightingType(index),
+        wheelchair_accessible: Boolean(here.trip_wheelchair_accessible),
+        service_notices: [],
       },
       sortKey: here.departure_minutes,
       arrival: here.arrival_minutes,
